@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Квиз Ломоносовских дней</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prata&family=Golos+Text:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one reading column of question cards; on wide screens a sticky question map sits to the left. Accent tiles echo Lomonosov's smalt mosaics. */
+:root{
+  --bg:#EDF0F4; --surface:#FFFFFF; --surface-2:#F5F7FA; --ink:#141C33; --muted:#5A6378; --line:#D3D9E3;
+  --accent:#2441A6; --accent-soft:#E2E8FB; --on-accent:#FFFFFF; --gold:#A27417;
+  --good:#16774A; --good-soft:#E0F2E8; --bad:#B5302A; --bad-soft:#FBE5E3;
+  --f-display:"Prata", Georgia, "Times New Roman", serif;
+  --f-body:"Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --f-sym:"Segoe UI Symbol","Noto Sans Symbols 2","Apple Symbols","DejaVu Sans",sans-serif;
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1321; --surface:#161D2F; --surface-2:#1B2338; --ink:#E6E9F2; --muted:#9BA4BA; --line:#29324C;
+    --accent:#93A8FF; --accent-soft:#1F2A52; --on-accent:#0E1321; --gold:#DDB25A;
+    --good:#4FC58A; --good-soft:#122E20; --bad:#FF7C70; --bad-soft:#3A1816; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1321; --surface:#161D2F; --surface-2:#1B2338; --ink:#E6E9F2; --muted:#9BA4BA; --line:#29324C;
+  --accent:#93A8FF; --accent-soft:#1F2A52; --on-accent:#0E1321; --gold:#DDB25A;
+  --good:#4FC58A; --good-soft:#122E20; --bad:#FF7C70; --bad-soft:#3A1816; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Masthead */
+.top{padding-block:28px 20px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(30px,5.2vw,48px);line-height:1.1;margin:8px 0 10px;text-wrap:balance}
+.tiles{display:grid;grid-template-columns:repeat(18,10px);gap:3px;margin:0 0 14px}
+.tiles i{display:block;width:10px;height:10px;border-radius:2px;background:var(--accent);opacity:.85}
+.tiles i:nth-child(3n){background:var(--gold)}
+.tiles i:nth-child(4n+1){opacity:.45}
+.tiles i:nth-child(5n){background:var(--good);opacity:.7}
+.lede{max-width:62ch;color:var(--muted);margin:0 0 18px}
+.tabs{display:inline-flex;gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.tab{border:0;background:transparent;padding:9px 16px;border-radius:9px;font-weight:600;cursor:pointer;color:var(--muted);display:flex;gap:8px;align-items:baseline}
+.tab small{font-weight:500;font-size:13px;font-variant-numeric:tabular-nums}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}
+
+/* Sticky progress bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-block:1px solid var(--line)}
+.bar-in{display:flex;align-items:center;gap:12px 16px;flex-wrap:wrap;padding-block:10px}
+.stats{display:flex;gap:14px;align-items:baseline;font-variant-numeric:tabular-nums;font-size:14px;color:var(--muted);flex-wrap:wrap}
+.stats b{color:var(--ink);font-size:16px}
+.stats .ok b{color:var(--good)} .stats .no b{color:var(--bad)}
+.meter{flex:1 1 160px;height:8px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;display:flex;min-width:120px}
+.meter span{display:block;height:100%;transition:width .3s}
+.meter .m-ok{background:var(--good)} .meter .m-no{background:var(--bad)}
+.bar-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface-2);padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--accent)}
+.btn-danger{color:var(--bad);border-color:var(--bad)}
+
+/* Main layout */
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:32px;padding-block:24px 64px}
+.map{display:none}
+@media (min-width:1100px){
+  .layout{grid-template-columns:232px minmax(0,780px);justify-content:center}
+  .map{display:block;position:sticky;top:calc(env(safe-area-inset-top,0px) + 84px);align-self:start}
+}
+.map h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:600}
+.map-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.dot{aspect-ratio:1;max-width:100%;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:600;cursor:pointer;font-variant-numeric:tabular-nums;color:var(--muted);padding:0}
+.dot[data-s="active"]:hover{border-color:var(--accent);color:var(--accent)}
+.dot[data-s="right"]{background:var(--good-soft);border-color:var(--good);color:var(--good)}
+.dot[data-s="wrong"]{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.dot[data-s="locked"]{opacity:.55}
+.legend{display:grid;gap:4px;margin-top:14px;font-size:13px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px;vertical-align:-1px;border:1px solid var(--line)}
+.legend .l-r::before{background:var(--good)} .legend .l-w::before{background:var(--bad)} .legend .l-a::before{background:var(--accent)}
+
+#list{display:grid;gap:16px;min-width:0}
+
+/* Question card */
+.q{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;scroll-margin-top:calc(env(safe-area-inset-top,0px) + 88px);display:grid;gap:14px;min-width:0}
+@media (min-width:700px){.q{padding:24px 28px}}
+.q[data-s="active"]:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.q[data-s="locked"] .q-text,.q[data-s="locked"] .opts{opacity:.5}
+.q-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.q-num{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-variant-numeric:tabular-nums}
+.q-num em{font-style:normal;font-weight:500;opacity:.8}
+.chip{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.02em}
+.chip-active{background:var(--accent-soft);color:var(--accent)}
+.chip-right{background:var(--good-soft);color:var(--good)}
+.chip-wrong{background:var(--bad-soft);color:var(--bad)}
+.chip-locked{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.q-text{font-size:clamp(18px,2.3vw,21px);line-height:1.35;font-weight:600;margin:0;text-wrap:balance}
+.q-note{font-size:14px;color:var(--muted);margin:-6px 0 0}
+.opts{border:0;margin:0;padding:0;display:grid;gap:8px;min-width:0}
+@media (min-width:700px){.opts.two{grid-template-columns:1fr 1fr}}
+.opt{display:flex;gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2);cursor:pointer;min-height:50px;transition:border-color .15s,background .15s}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt:hover{border-color:var(--accent)}
+.opts:disabled .opt{cursor:default}
+.opts:disabled .opt:hover{border-color:var(--line)}
+.letter{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:14px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.opt-text{min-width:0;overflow-wrap:anywhere}
+.opt-text.sym{font-family:var(--f-sym);font-size:24px;line-height:1}
+.opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.opt:has(input:checked) .letter{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.opt:has(input:focus-visible){outline:3px solid var(--accent);outline-offset:2px}
+.opts .opt.is-correct.is-correct{border-color:var(--good);background:var(--good-soft)}
+.opts .opt.is-correct.is-correct .letter{background:var(--good);border-color:var(--good);color:var(--surface)}
+.opts .opt.is-wrong.is-wrong{border-color:var(--bad);background:var(--bad-soft)}
+.opts .opt.is-wrong.is-wrong .letter{background:var(--bad);border-color:var(--bad);color:var(--surface)}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.check{border:0;background:var(--accent);color:var(--on-accent);padding:12px 22px;border-radius:11px;font-weight:700;cursor:pointer;min-height:46px}
+.check:disabled{opacity:.4;cursor:not-allowed}
+.hint{font-size:14px;color:var(--muted)}
+.lock{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--muted)}
+.lock svg{flex:none}
+.fb{border-radius:11px;padding:14px 16px;display:grid;gap:6px}
+.fb.right{background:var(--good-soft)} .fb.wrong{background:var(--bad-soft)}
+.fb-title{font-weight:700;margin:0}
+.fb.right .fb-title{color:var(--good)} .fb.wrong .fb-title{color:var(--bad)}
+.fb-text{margin:0;font-size:15px}
+.next{justify-self:start;border:1px solid var(--line);background:var(--surface);padding:9px 16px;border-radius:10px;font-weight:600;cursor:pointer;margin-top:4px}
+.next:hover{border-color:var(--accent)}
+
+.done{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px 28px;display:grid;gap:10px}
+.done h2{font-family:var(--f-display);font-weight:400;font-size:28px;margin:0}
+.done p{margin:0;color:var(--muted)}
+.foot{font-size:13px;color:var(--muted);max-width:70ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Lomonossow-Tage in Berlin</p>
+    <h1>Квиз Ломоносовских дней</h1>
+    <div class="tiles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <p class="lede">Все вопросы квиза прошлых лет с вариантами ответов. Отвечайте в любом порядке: выберите вариант и нажмите «Проверить».</p>
+    <div class="tabs" role="tablist" aria-label="Год квиза">
+      <button class="tab" role="tab" id="tab-2025" data-year="2025">2025 <small id="tc-2025"></small></button>
+      <button class="tab" role="tab" id="tab-2024" data-year="2024">2024 <small id="tc-2024"></small></button>
+    </div>
+  </div>
+</header>
+
+<div class="bar">
+  <div class="wrap bar-in">
+    <div class="stats" aria-live="polite">
+      <span>Отвечено <b id="s-done">0</b> из <b id="s-total">0</b></span>
+      <span class="ok">Верно <b id="s-ok">0</b></span>
+      <span class="no">Ошибок <b id="s-no">0</b></span>
+    </div>
+    <div class="meter" aria-hidden="true"><span class="m-ok" id="m-ok"></span><span class="m-no" id="m-no"></span></div>
+    <div class="bar-actions" id="bar-actions"></div>
+  </div>
+</div>
+
+<main class="wrap layout">
+  <aside class="map" aria-label="Карта вопросов">
+    <h2>Вопросы</h2>
+    <div class="map-grid" id="map"></div>
+    <div class="legend"><span>без ответа</span><span class="l-r">верно</span><span class="l-w">ошибка</span></div>
+  </aside>
+  <section id="list" aria-label="Вопросы квиза"></section>
+</main>
+
+<script>
+(function(){
+"use strict";
+// [вопрос, [варианты a-d], индекс верного, пояснение, доп. параметры]
+var DATA = {
+"2025": [
+["М. В. Ломоносов родился в году…", ["1701","1711","1721","1731"], 1, "Ломоносов родился 19 ноября 1711 года в деревне Мишанинской под Холмогорами."],
+["Сколько лет было Ломоносову, когда он поступил в Славяно-греко-латинскую академию?", ["13","15","17","19"], 3, "Он поступил в академию в январе 1731 года, ему было 19 лет."],
+["Какой жанр стихотворений особенно развивал Ломоносов?", ["Басни","Оды","Эпиграммы","Сонеты"], 1, "Ломоносов — создатель русской торжественной оды."],
+["Что такое оксиморон?", ["Чистый драгоценный металл","Город в Древней Греции","Хроническое заболевание лёгких","Фигура речи"], 3, "Оксиморон — сочетание противоположных по смыслу слов: «горячий снег», «живой труп»."],
+["Что такое эвристика?", ["Комплекс ежедневной гимнастики","Наука о красноречии","Настольная игра","Метод проб и ошибок"], 3, "Эвристика — приёмы поиска решения, в том числе метод проб и ошибок. Наука о красноречии — это риторика."],
+["Какое море Ломоносов впервые научно описал во время своих северных экспедиций?", ["Белое море","Балтийское море","Баренцево море","Карское море"], 0, "Ломоносов вырос на берегу Белого моря и ходил по нему с отцом. Из вариантов квиза верный — Белое море."],
+["Когда человек впервые совершил кругосветное путешествие?", ["1381–1385","1450–1454","1519–1522","1617–1618"], 2, "Экспедиция Магеллана: 1519–1522 годы. Магеллан погиб в пути, плавание завершил Элькано."],
+["Какой император принял христианство в Римской империи?", ["Октавиан Август","Нерон","Диоклетиан","Константин"], 3, "Константин Великий: Миланский эдикт 313 года, крестился в 337 году."],
+["Какое расстояние самое большое?", ["2048 см","20,56 м","20 550 мм","1/50 км"], 1, "2048 см = 20,48 м; 20 550 мм = 20,55 м; 1/50 км = 20 м. Больше всего — 20,56 м."],
+["Как часто бывают приливы и отливы в сутки?", ["Примерно каждые 4 часа","Примерно каждые 6 часов","Примерно каждые 8 часов","Примерно каждые 12 часов"], 1, "За сутки бывает 2 прилива и 2 отлива. Прилив сменяется отливом примерно каждые 6 часов."],
+["Какова длина меридиана?", ["Около 15 000 км","Около 20 000 км","Около 25 000 км","Около 10 000 км"], 1, "Меридиан идёт от полюса до полюса — это половина окружности Земли, около 20 000 км."],
+["Какова долгота дня на экваторе?", ["Около 8 часов","Около 10 часов","Около 12 часов","Около 14 часов"], 2, "На экваторе день круглый год длится около 12 часов."],
+["Какие драгоценные камни часто украшали оружие средневековых рыцарей?", ["Гранаты","Аметисты","Бирюза","Сапфиры"], 0, "Рукояти и ножны средневековых мечей чаще всего украшали гранатами (альмандинами)."],
+["Какую планету Ломоносов открыл как имеющую атмосферу?", ["Венера","Марс","Юпитер","Меркурий"], 0, "В 1761 году Ломоносов наблюдал прохождение Венеры по диску Солнца и открыл у неё атмосферу."],
+["Какая температура на поверхности Солнца?", ["Около 1 500 °C","Около 5 500 °C","Около 10 500 °C","Около 15 500 °C"], 1, "Температура видимой поверхности Солнца (фотосферы) — около 5 500 °C."],
+["Каким знаком обозначается планета Земля?", ["♂","♁","☿","♃"], 1, "♁ — Земля. ♂ — Марс, ☿ — Меркурий, ♃ — Юпитер.", {sym:true, two:true}],
+["Расстояние между Землёй и Солнцем равно…", ["Около 50 000 000 км","Около 100 000 000 км","Около 150 000 000 км","Около 200 000 000 км"], 2, "Около 149,6 млн км — это одна астрономическая единица."],
+["Скорость ветров на Луне достигает…", ["Около 0 км/ч","Около 50 км/ч","Около 100 км/ч","Около 150 км/ч"], 0, "На Луне практически нет атмосферы, поэтому ветра там нет."],
+["Бог Солнца в Древнем Египте — это…", ["Ра","Осирис","Анубис","Амон"], 0, "Ра — бог Солнца. Осирис — бог загробного мира, Анубис — покровитель мёртвых."],
+["Какой высоты достигает земная атмосфера?", ["Около 10 км","Около 100 км","Около 1 000 км","Около 10 000 км"], 2, "В учебниках верхнюю границу атмосферы условно проводят на высоте около 1 000 км. На 100 км проходит граница космоса (линия Кармана)."],
+["Сколько литров в барреле нефти?", ["Около 50","Около 100","Около 150","Около 200"], 2, "1 баррель ≈ 159 литров, ближе всего вариант «около 150»."],
+["Какой химический символ используется для обозначения серебра?", ["Ar","Au","Ag","Al"], 2, "Ag — от латинского argentum. Au — золото, Al — алюминий, Ar — аргон.", {two:true}],
+["Что измеряется в омах?", ["Сопротивление","Напряжение","Сила тока","Мощность"], 0, "В омах измеряют электрическое сопротивление. Напряжение — в вольтах, сила тока — в амперах, мощность — в ваттах."],
+["Как называется самая быстрая частица во Вселенной, скорость которой никто не может превысить?", ["Электрон","Протон","Нейтрон","Фотон"], 3, "Фотон — частица света, движется со скоростью около 300 000 км/с."],
+["Как называют сильные ветра в Азии?", ["Ураган","Тайфун","Торнадо","Самум"], 1, "Тропические циклоны у берегов Азии называют тайфунами. Ураганы бывают в Атлантике, самум — ветер пустыни."],
+["Какой процент льда в айсберге находится под водой?", ["25 %","45 %","65 %","85 %"], 3, "Под водой скрыто около 90 % айсберга, из вариантов ближе всего 85 %."],
+["Чугун — это сплав железа и…", ["меди","никеля","углерода","вольфрама"], 2, "Чугун — сплав железа с углеродом (больше 2,14 % углерода)."],
+["Сколько процентов всей воды на Земле составляет пресная вода?", ["Около 1 %","Около 10 %","Около 20 %","Около 30 %"], 0, "Пресной воды всего около 2,5 %, а доступной для людей — меньше 1 %. Из вариантов верный — около 1 %."],
+["Как переводится название столицы Японии?", ["Рисовое поле","Посреди океана","Восточная столица","Цветущий сад"], 2, "Токио (東京): «то» — восток, «кё» — столица."],
+["Где жили ацтеки?", ["В Перу","В Мексике","В Аргентине","В Чили"], 1, "Столица ацтеков Теночтитлан стояла на месте нынешнего Мехико."],
+["Кто изобрёл динамит?", ["Альфред Нобель","Рудольф Дизель","Михаил Ломоносов","Дмитрий Менделеев"], 0, "Альфред Нобель изобрёл динамит в 1867 году."],
+["15 рабочих работают 12 дней. Сколько дней понадобится 20 рабочим для выполнения этого же объёма работ?", ["7","8","9","10"], 2, "15 × 12 = 180 рабочих дней; 180 : 20 = 9 дней.", {two:true}],
+["Где состоялись первые Олимпийские игры современности?", ["Париж","Лондон","Рим","Афины"], 3, "Первые современные Олимпийские игры прошли в Афинах в 1896 году."],
+["Какой бог в греческой мифологии соответствовал римскому богу Юпитеру?", ["Гермес","Аполлон","Посейдон","Зевс"], 3, "Юпитер — римский аналог Зевса. Гермес — Меркурий, Посейдон — Нептун."],
+["Кто был первым президентом США?", ["Вашингтон","Джексон","Линкольн","Джефферсон"], 0, "Джордж Вашингтон, президент в 1789–1797 годах."],
+["Какая из этих стран не является монархией?", ["Испания","Португалия","Дания","Бельгия"], 1, "Португалия — республика с 1910 года. Испания, Дания и Бельгия — монархии."],
+["Где находится «Испанская лестница»?", ["В Мадриде","В Лиссабоне","В Париже","В Риме"], 3, "Испанская лестница находится в Риме, на площади Испании."],
+["Какую страну называют «водонапорной башней Африки»?", ["Алжир","Эфиопия","Египет","Ангола"], 1, "С Эфиопского нагорья берут начало Голубой Нил и многие другие реки."],
+["Флаг какой страны изображён здесь?", ["Ирландия","Исландия","Бельгия","Норвегия"], 3, "Красный флаг с синим крестом в белой кайме — Норвегия. У Исландии наоборот: синий флаг с красным крестом.", {note:"На слайде: красный флаг с синим скандинавским крестом в белой кайме."}],
+["Сколько государственных языков в Швейцарии?", ["3","4","5","6"], 1, "Немецкий, французский, итальянский и ретороманский.", {two:true}],
+["Как называется самый большой остров?", ["Мадагаскар","Новая Гвинея","Борнео","Гренландия"], 3, "Гренландия — около 2,1 млн км²."],
+["Какой стране принадлежат контуры, которые вы видите на рисунке?", ["Норвегия","Финляндия","Исландия","Ирландия"], 3, "На слайде был контур острова Ирландия.", {note:"На слайде: контур острова с сильно изрезанным западным берегом (Ирландия)."}],
+["На флаге какой страны изображён дракон?", ["Япония","Китай","Непал","Бутан"], 3, "На флаге Бутана — белый дракон Друк."],
+["В какой из этих стран больше всего населения?", ["США","Индонезия","Бразилия","Япония"], 0, "США — около 340 млн, Индонезия — около 280 млн, Бразилия — около 212 млн, Япония — около 124 млн."],
+["Сколько Великих Американских озёр?", ["3","4","5","6"], 2, "Верхнее, Мичиган, Гурон, Эри и Онтарио.", {two:true}],
+["Какой это год римскими цифрами — MCMXXIV?", ["1712","1876","1924","2019"], 2, "M = 1000, CM = 900, XX = 20, IV = 4. Итого 1924.", {two:true}],
+["Какая река пересекает экватор дважды?", ["Конго","Нил","Амазонка","Миссисипи"], 0, "Река Конго в Африке пересекает экватор два раза."],
+["Как называлась первая в мире библиотека, созданная в Древней Месопотамии?", ["Александрийская библиотека","Библиотека Ашшурбанипала","Пергамская библиотека","Ватиканская библиотека"], 1, "Библиотека ассирийского царя Ашшурбанипала в Ниневии, VII век до н. э."],
+["Где находится линия перемены дат?", ["В Северном Ледовитом океане","В Тихом океане","В Индийском океане","В Атлантическом океане"], 1, "Линия перемены дат проходит в Тихом океане, примерно по 180-му меридиану."],
+["В какой из этих стран Новый год отмечается первым?", ["ЮАР","Австралия","Канада","Индия"], 1, "Австралия ближе всех к линии перемены дат с восточной стороны, поэтому встречает Новый год раньше остальных."],
+["Какое из этих островных государств находится к югу от экватора?", ["Япония","Ямайка","Филиппины","Мадагаскар"], 3, "Мадагаскар лежит в Южном полушарии, остальные — в Северном."],
+["Кто был противником Рима в Пунических войнах?", ["Галлия","Карфаген","Дакия","Македония"], 1, "Пунические войны Рим вёл с Карфагеном (264–146 гг. до н. э.)."],
+["В каком веке жила Жанна д’Арк?", ["XIV","XV","XVI","XVII"], 1, "Жанна д’Арк жила примерно в 1412–1431 годах, это XV век.", {two:true}],
+["Полёт первого космонавта продолжался…", ["78 минут","98 минут","108 минут","118 минут"], 2, "Полёт Юрия Гагарина 12 апреля 1961 года длился 108 минут."],
+["Кто изобрёл парашют?", ["Леонардо да Винчи","Михаил Ломоносов","Отто Лилиенталь","Генри Форд"], 0, "Первый проект парашюта нарисовал Леонардо да Винчи около 1485 года."],
+["Какой музыкальный инструмент называют «королём инструментов»?", ["Фортепиано","Орган","Скрипка","Арфа"], 1, "Орган называют королём инструментов за размер и огромный диапазон звучания."],
+["Какое животное способно спать с открытыми глазами?", ["Кошка","Дельфин","Лошадь","Сова"], 1, "У дельфина спит по очереди одно полушарие мозга, а один глаз остаётся открытым."],
+["Какой медведь самый крупный?", ["Белый","Бурый","Гималайский","Гризли"], 0, "Белый медведь — самый крупный хищник суши."],
+["Какой срок беременности у лошади?", ["7 месяцев","9 месяцев","11 месяцев","13 месяцев"], 2, "Жеребёнка лошадь вынашивает около 11 месяцев (330–345 дней)."]
+],
+"2024": [
+["М. В. Ломоносов родился в году…", ["1701","1711","1721","1731"], 1, "Ломоносов родился 19 ноября 1711 года.", {two:true}],
+["Сколько лет было Ломоносову, когда он поступил в Славяно-греко-латинскую академию?", ["13","15","17","19"], 3, "Ему было 19 лет (январь 1731 года).", {two:true}],
+["В каком году Ломоносов отправился в Москву?", ["1720","1730","1740","1750"], 1, "В декабре 1730 года Ломоносов ушёл в Москву с рыбным обозом.", {two:true}],
+["В какой европейской стране он продолжил обучение?", ["Нидерланды","Великобритания","Германия","Франция"], 2, "В 1736–1741 годах Ломоносов учился в Германии, в Марбурге и Фрайберге."],
+["Какая страна не входит в состав Бенилюкса?", ["Бельгия","Люксембург","Нидерланды","Дания"], 3, "Бенилюкс — это Бельгия, Нидерланды и Люксембург."],
+["Расположите эти личности в правильном хронологическом порядке:", ["Архимед — Дарвин — Нострадамус — Ломоносов","Дарвин — Архимед — Нострадамус — Ломоносов","Архимед — Нострадамус — Ломоносов — Дарвин","Нострадамус — Архимед — Дарвин — Ломоносов"], 2, "Архимед (III в. до н. э.) → Нострадамус (1503–1566) → Ломоносов (1711–1765) → Дарвин (1809–1882)."],
+["Когда человек впервые совершил кругосветное путешествие?", ["1381–1385","1450–1454","1519–1522","1617–1618"], 2, "Экспедиция Магеллана, 1519–1522 годы.", {two:true}],
+["Кто первым обошёл вокруг света?", ["Фернандо Магеллан","Христофор Колумб","Френсис Дрейк","Васко да Гама"], 0, "Первое кругосветное плавание — экспедиция Магеллана. Сам он погиб в пути, плавание завершил Хуан Себастьян Элькано."],
+["Какой бог в греческой мифологии соответствовал римскому богу Юпитеру?", ["Гермес","Аполлон","Посейдон","Зевс"], 3, "Юпитер — римский аналог Зевса."],
+["Расстояние между Землёй и Солнцем равно…", ["Около 50 000 000 км","Около 100 000 000 км","Около 150 000 000 км","Около 200 000 000 км"], 2, "Около 149,6 млн км."],
+["Какой высоты достигает земная атмосфера?", ["Около 10 км","Около 100 км","Около 1 000 км","Около 10 000 км"], 2, "Условная верхняя граница атмосферы в учебниках — около 1 000 км."],
+["Сколько кислорода содержится в воздухе, которым мы дышим?", ["Около 20 %","Около 30 %","Около 40 %","Около 50 %"], 0, "Кислорода в воздухе около 21 %, азота — около 78 %."],
+["Сколько снега выпадает в Центральной Антарктиде в год?", ["0,01 м","0,1 м","1 м","10 м"], 1, "Центральная Антарктида — ледяная пустыня: за год выпадает всего несколько сантиметров осадков, это около 0,1 м снега.", {two:true}],
+["Сколько процентов всей воды на Земле составляет пресная вода?", ["Около 1 %","Около 10 %","Около 20 %","Около 30 %"], 0, "Пресной воды около 2,5 %, доступной — меньше 1 %. Из вариантов верный — около 1 %."],
+["Какой процент льда в айсберге находится под водой?", ["25 %","45 %","65 %","85 %"], 3, "Под водой около 90 % айсберга, ближе всего вариант 85 %.", {two:true}],
+["Как называют сильные ветра в Азии?", ["Ураган","Тайфун","Торнадо","Самум"], 1, "Тропические циклоны у берегов Азии называют тайфунами."],
+["Какой химический символ используется для обозначения серебра?", ["Ar","Au","Ag","Al"], 2, "Ag — от латинского argentum.", {two:true}],
+["Какой химический элемент дал название стране, а не наоборот?", ["Argentum","Americium","Francium","Germanium"], 0, "Аргентина названа от латинского argentum — «серебро». Америций, франций и германий, наоборот, названы в честь стран."],
+["Сколько литров в барреле нефти?", ["Около 50","Около 100","Около 150","Около 200"], 2, "1 баррель ≈ 159 литров."],
+["Что такое бронза?", ["Чистый драгоценный металл","Минерал","Смесь меди и серебра","Смесь меди и олова"], 3, "Классическая бронза — сплав меди с оловом."],
+["Где находится линия перемены дат?", ["В Северном Ледовитом океане","В Тихом океане","В Индийском океане","В Атлантическом океане"], 1, "В Тихом океане, примерно по 180-му меридиану."],
+["В какой из этих стран Новый год отмечается первым?", ["ЮАР","Австралия","Канада","Индия"], 1, "Из этих стран первой Новый год встречает Австралия."],
+["Сколько времени в Пекине, если в Берлине 12 часов дня?", ["19 часов вечера","12 часов дня","24 (0) часа ночи","6 часов утра"], 0, "Пекин живёт по UTC+8, Берлин зимой по UTC+1: разница 7 часов. Летом (UTC+2) было бы 18:00, но такого варианта нет."],
+["В какой из этих стран больше всего населения?", ["США","Индонезия","Бразилия","Япония"], 0, "США — около 340 млн, Индонезия — около 280 млн, Бразилия — около 212 млн, Япония — около 124 млн."],
+["Флаг какой страны изображён?", ["Франция","Бельгия","Румыния","Андорра"], 2, "Синий, жёлтый, красный без герба — Румыния. У Андорры те же цвета, но с гербом; у Франции синий-белый-красный; у Бельгии чёрный-жёлтый-красный.", {note:"На слайде: три вертикальные полосы — синяя, жёлтая, красная, без герба."}],
+["Какой стране принадлежат контуры, которые вы видите на рисунке?", ["Норвегия","Финляндия","Исландия","Ирландия"], 3, "На слайде был контур острова Ирландия.", {note:"На слайде: контур острова с сильно изрезанным западным берегом (Ирландия)."}],
+["Какое из этих островных государств находится к югу от экватора?", ["Япония","Ямайка","Филиппины","Мадагаскар"], 3, "Мадагаскар лежит в Южном полушарии."],
+["Какой город находится на двух континентах?", ["Стамбул","Сингапур","Иерусалим","Гибралтар"], 0, "Стамбул стоит по обе стороны Босфора — в Европе и в Азии."],
+["Как называется самая длинная река?", ["Амазонка","Миссисипи","Нил","Янцзы"], 2, "По учебникам самая длинная река — Нил (около 6 650 км). Некоторые новые измерения дают первенство Амазонке, но в квизах обычно засчитывают Нил."],
+["Какая самая большая планета Солнечной системы?", ["Плутон","Сатурн","Уран","Юпитер"], 3, "Юпитер — самая большая планета, больше всех остальных вместе взятых по массе."],
+["Сколько планет в Солнечной системе?", ["7","8","9","10"], 1, "8 планет. С 2006 года Плутон считается карликовой планетой.", {two:true}],
+["В каком году был совершён первый полёт человека в космос?", ["1959","1961","1963","1965"], 1, "12 апреля 1961 года, Юрий Гагарин.", {two:true}],
+["Полёт первого космонавта продолжался…", ["78 минут","98 минут","108 минут","118 минут"], 2, "Полёт Гагарина длился 108 минут."],
+["Когда человек впервые высадился на Луну?", ["1968","1969","1970","1971"], 1, "20 июля 1969 года, Нил Армстронг и Базз Олдрин.", {two:true}],
+["Человек состоит из воды на…", ["2/3","1/4","1/2","1/3"], 0, "Около 60–70 % массы тела человека — вода, то есть примерно 2/3.", {two:true}],
+["Кто изобрёл динамит?", ["Альфред Нобель","Рудольф Дизель","Михаил Ломоносов","Дмитрий Менделеев"], 0, "Альфред Нобель, 1867 год."],
+["Какой медведь самый крупный?", ["Белый","Бурый","Гималайский","Гризли"], 0, "Белый медведь — самый крупный."],
+["Как часто бывают приливы и отливы в сутки?", ["Примерно каждые 4 часа","Примерно каждые 6 часов","Примерно каждые 8 часов","Примерно каждые 12 часов"], 1, "Прилив сменяется отливом примерно каждые 6 часов: 2 прилива и 2 отлива в сутки."],
+["Один градус долготы на экваторе составляет…", ["Около 101 км","Около 111 км","Около 121 км","Около 131 км"], 1, "40 075 км : 360 ≈ 111 км."],
+["Какова длина меридиана?", ["Около 10 000 км","Около 15 000 км","Около 20 000 км","Около 25 000 км"], 2, "От полюса до полюса около 20 000 км."],
+["Какова длина экватора?", ["Около 10 000 км","Около 20 000 км","Около 30 000 км","Около 40 000 км"], 3, "Около 40 075 км."],
+["Какова долгота дня на экваторе?", ["Около 8 часов","Около 10 часов","Около 12 часов","Около 14 часов"], 2, "Около 12 часов круглый год."],
+["Средний диаметр планеты Земля составляет…", ["Около 13 000 км","Около 23 000 км","Около 33 000 км","Около 43 000 км"], 0, "Около 12 742 км."],
+["С какой скоростью Земля вращается вокруг Солнца?", ["Около 15 км/с","Около 30 км/с","Около 45 км/с","Около 60 км/с"], 1, "Около 29,8 км/с — больше 100 000 км/ч."],
+["Скорость ветров на Луне достигает…", ["Около 0 км/ч","Около 50 км/ч","Около 100 км/ч","Около 150 км/ч"], 0, "На Луне нет атмосферы, значит, нет и ветра."],
+["Какая температура на поверхности Солнца?", ["Около 1 500 °C","Около 5 500 °C","Около 10 500 °C","Около 15 500 °C"], 1, "Около 5 500 °C."],
+["Какое расстояние самое большое?", ["2048 см","20,56 м","20 550 мм","1/50 км"], 1, "20,48 м, 20,56 м, 20,55 м и 20 м. Больше всего — 20,56 м.", {two:true}],
+["Самая высокая гора в мире называется…", ["Эльбрус","K2","Эверест","Аннапурна"], 2, "Эверест (Джомолунгма), 8 849 м."],
+["Гора Фукусима является национальным символом…", ["Японии","Южной Кореи","Китая","Вьетнама"], 0, "Национальный символ Японии — гора Фудзи.", {note:"Так написано на слайде; имелась в виду гора Фудзи."}]
+]};
+
+var YEARS = ["2025","2024"];
+var KEY = "lomonosov-quiz-v1";
+var store = {"2025":{}, "2024":{}};
+try{ var raw = localStorage.getItem(KEY); if(raw){ var p = JSON.parse(raw); YEARS.forEach(function(y){ if(p && p[y] && typeof p[y]==="object") store[y]=p[y]; }); } }catch(e){}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(store)); }catch(e){} }
+
+var year = "2025";
+var LETTERS = ["a","b","c","d"];
+var list = document.getElementById("list");
+var map = document.getElementById("map");
+var confirmReset = false;
+
+function answers(){ return store[year]; }
+function qs(){ return DATA[year]; }
+function firstOpen(){ var a=answers(), n=qs().length; for(var i=0;i<n;i++){ if(a[i]===undefined) return i; } return n; }
+function stateOf(i){
+  var a=answers();
+  if(a[i]!==undefined) return a[i]===qs()[i][2] ? "right" : "wrong";
+  return "active";
+}
+function el(tag, cls, text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!==undefined) e.textContent=text; return e; }
+function cardId(i){ return "q-"+year+"-"+(i+1); }
+
+var LOCK_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2"/></svg>';
+
+function renderCard(i){
+  var q=qs()[i], opts=q[4]||{}, s=stateOf(i), total=qs().length, a=answers();
+  var card=el("article","q"); card.id=cardId(i); card.dataset.s=s; card.dataset.i=i;
+  var head=el("div","q-head");
+  var num=el("span","q-num"); num.textContent="Вопрос "+(i+1)+" "; num.appendChild(el("em",null,"из "+total));
+  head.appendChild(num);
+  var chipText={active:"Без ответа",right:"Верно",wrong:"Ошибка",locked:"Закрыт"}[s];
+  head.appendChild(el("span","chip chip-"+s, chipText));
+  card.appendChild(head);
+  var h=el("h2","q-text",q[0]); h.id=cardId(i)+"-t"; card.appendChild(h);
+  if(opts.note) card.appendChild(el("p","q-note",opts.note));
+
+  var fs=el("fieldset","opts"+(opts.two?" two":""));
+  fs.setAttribute("aria-labelledby", h.id);
+  if(s!=="active") fs.disabled=true;
+  q[1].forEach(function(text, k){
+    var lab=el("label","opt");
+    var inp=document.createElement("input"); inp.type="radio"; inp.name=cardId(i); inp.value=k; inp.id=cardId(i)+"-"+k;
+    if(a[i]!==undefined){
+      if(k===q[2]) lab.classList.add("is-correct");
+      if(k===a[i] && a[i]!==q[2]) lab.classList.add("is-wrong");
+      if(k===a[i]) inp.checked=true;
+    }
+    lab.appendChild(inp);
+    lab.appendChild(el("span","letter",LETTERS[k]));
+    lab.appendChild(el("span","opt-text"+(opts.sym?" sym":""),text));
+    fs.appendChild(lab);
+  });
+  card.appendChild(fs);
+
+  if(s==="active"){
+    var act=el("div","actions");
+    var btn=el("button","check","Проверить"); btn.type="button"; btn.disabled=true;
+    var hint=el("span","hint","Выберите один вариант");
+    fs.addEventListener("change", function(){ btn.disabled=false; hint.textContent="Нажмите «Проверить»"; });
+    btn.addEventListener("click", function(){
+      var c=fs.querySelector("input:checked"); if(!c) return;
+      answers()[i]=Number(c.value); save(); afterCheck(i);
+    });
+    act.appendChild(btn); act.appendChild(hint); card.appendChild(act);
+  } else if(s==="locked"){
+    var lk=el("p","lock"); lk.innerHTML=LOCK_SVG;
+    lk.appendChild(document.createTextNode(" Откроется после ответа на вопрос "+i+"."));
+    card.appendChild(lk);
+  } else {
+    var right=s==="right";
+    var fb=el("div","fb "+(right?"right":"wrong")); fb.setAttribute("role","status");
+    fb.appendChild(el("p","fb-title", right ? "Правильно!" : "Неправильно. Верный ответ: "+LETTERS[q[2]]+") "+q[1][q[2]]));
+    fb.appendChild(el("p","fb-text",q[3]));
+    if(i<total-1){
+      var nx=el("button","next","Следующий вопрос ↓"); nx.type="button";
+      nx.addEventListener("click", function(){ goTo(i+1, true); });
+      fb.appendChild(nx);
+    }
+    card.appendChild(fb);
+  }
+  return card;
+}
+
+function renderDone(){
+  var old=document.getElementById("done"); if(old) old.remove();
+  var a=answers(), n=qs().length; if(firstOpen()<n) return;
+  var ok=0; for(var i=0;i<n;i++){ if(a[i]===qs()[i][2]) ok++; }
+  var d=el("section","done"); d.id="done";
+  d.appendChild(el("h2",null,"Готово: "+ok+" из "+n));
+  d.appendChild(el("p",null, ok===n ? "Все ответы верные." : "Ошибок: "+(n-ok)+". Пройдите ещё раз или посмотрите пояснения в вопросах с ошибками."));
+  var row=el("div","bar-actions");
+  var again=el("button","btn","Пройти "+year+" заново"); again.type="button";
+  again.addEventListener("click", function(){ store[year]={}; save(); render(); goTo(0,true); });
+  row.appendChild(again);
+  var other=YEARS.filter(function(y){return y!==year;})[0];
+  var ob=el("button","btn","Перейти к "+other); ob.type="button";
+  ob.addEventListener("click", function(){ setYear(other); window.scrollTo({top:0}); });
+  row.appendChild(ob);
+  d.appendChild(row);
+  list.appendChild(d);
+}
+
+function renderMap(){
+  map.innerHTML="";
+  qs().forEach(function(_,i){
+    var b=el("button","dot",String(i+1)); b.type="button"; b.dataset.s=stateOf(i);
+    b.setAttribute("aria-label","Вопрос "+(i+1));
+    b.addEventListener("click", function(){ goTo(i,false); });
+    map.appendChild(b);
+  });
+}
+
+function renderStats(){
+  var a=answers(), n=qs().length, done=0, ok=0;
+  for(var i=0;i<n;i++){ if(a[i]!==undefined){ done++; if(a[i]===qs()[i][2]) ok++; } }
+  document.getElementById("s-done").textContent=done;
+  document.getElementById("s-total").textContent=n;
+  document.getElementById("s-ok").textContent=ok;
+  document.getElementById("s-no").textContent=done-ok;
+  document.getElementById("m-ok").style.width=(ok/n*100)+"%";
+  document.getElementById("m-no").style.width=((done-ok)/n*100)+"%";
+  YEARS.forEach(function(y){
+    var aa=store[y], c=0; for(var k in aa){ if(Object.prototype.hasOwnProperty.call(aa,k)) c++; }
+    document.getElementById("tc-"+y).textContent=c+"/"+DATA[y].length;
+  });
+  renderBarActions(done<n);
+}
+
+function renderBarActions(hasOpen){
+  var box=document.getElementById("bar-actions"); box.innerHTML="";
+  if(confirmReset){
+    box.appendChild(el("span","hint","Сбросить ответы "+year+"?"));
+    var yes=el("button","btn btn-danger","Да, сбросить"); yes.type="button";
+    yes.addEventListener("click", function(){ store[year]={}; save(); confirmReset=false; render(); window.scrollTo({top:0}); });
+    var no=el("button","btn","Отмена"); no.type="button";
+    no.addEventListener("click", function(){ confirmReset=false; renderStats(); });
+    box.appendChild(yes); box.appendChild(no);
+    return;
+  }
+  if(hasOpen){
+    var cur=el("button","btn","К первому без ответа ("+(firstOpen()+1)+")"); cur.type="button";
+    cur.addEventListener("click", function(){ goTo(firstOpen(), true); });
+    box.appendChild(cur);
+  }
+  var r=el("button","btn","Начать заново"); r.type="button";
+  r.addEventListener("click", function(){ confirmReset=true; renderStats(); });
+  box.appendChild(r);
+}
+
+function replaceCard(i){
+  var old=document.getElementById(cardId(i)); if(!old) return;
+  list.replaceChild(renderCard(i), old);
+}
+
+function afterCheck(i){
+  replaceCard(i);
+  if(i+1<qs().length) replaceCard(i+1);
+  renderMap(); renderStats(); renderDone();
+  var fb=document.querySelector("#"+cardId(i)+" .fb");
+  if(fb && fb.getBoundingClientRect().bottom > window.innerHeight){ fb.scrollIntoView({behavior: reduce() ? "auto":"smooth", block:"nearest"}); }
+}
+
+function reduce(){ try{ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } }
+
+function goTo(i, focus){
+  var c=document.getElementById(cardId(i)); if(!c) return;
+  c.scrollIntoView({behavior: reduce() ? "auto":"smooth", block:"start"});
+  if(focus){ var inp=c.querySelector("fieldset:not([disabled]) input"); if(inp) setTimeout(function(){ try{ inp.focus({preventScroll:true}); }catch(e){} }, 350); }
+}
+
+function render(){
+  list.innerHTML="";
+  qs().forEach(function(_,i){ list.appendChild(renderCard(i)); });
+  renderDone(); renderMap(); renderStats();
+  YEARS.forEach(function(y){ document.getElementById("tab-"+y).setAttribute("aria-selected", String(y===year)); });
+}
+
+function setYear(y){
+  if(DATA[y]===undefined) y="2025";
+  year=y; confirmReset=false; render();
+  if(location.hash!=="#y"+y){ try{ history.replaceState(null,"","#y"+y); }catch(e){ location.hash="y"+y; } }
+}
+
+YEARS.forEach(function(y){ document.getElementById("tab-"+y).addEventListener("click", function(){ setYear(y); }); });
+window.addEventListener("hashchange", function(){ var h=location.hash.replace("#y",""); if(h!==year && DATA[h]) setYear(h); });
+var start=location.hash.replace("#y","");
+setYear(DATA[start] ? start : "2025");
+})();
+</script>
+</body>
+</html>
